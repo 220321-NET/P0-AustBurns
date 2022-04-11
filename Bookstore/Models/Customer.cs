@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+
 namespace Models;
-    public class Customer 
+    public class Customer : BasicID
     {
-        //public string username = "";
+        // public string username = "";
 private string username;
         public string Username
         {
-            get => Username;
+            get => username;
             set
             {
                 if(String.IsNullOrWhiteSpace(value))
@@ -14,7 +15,7 @@ private string username;
                         throw new ValidationException("Must Provide a Username");
                     }
 
-                username = value;//.Trim();
+                username = value;
             }
         }
 
