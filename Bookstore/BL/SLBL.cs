@@ -15,50 +15,56 @@ public class SLBL : ISLBL
             _repo = repo;
         }
 
-        public Customer CreateCustomer(Customer customerToCreate)
+        public async Task<Customer> CreateCustomerAsync(Customer customerToCreate)
         {
-            return _repo.CreateCustomer(customerToCreate);
+            return await _repo.CreateCustomerAsync(customerToCreate);
         }
 
-        public Order AddCustomerHistory(Order updateHistory)
+        public async Task<Order> AddCustomerHistoryAsync(Order updateHistory)
         {
-            return _repo.AddCustomerHistory(updateHistory);
+            return  await _repo.AddCustomerHistoryAsync(updateHistory);
         }
 
-        public Order GetCustomerHistory(Order getHistory)
+        public async Task<List<Order>> GetCustomerHistory(Order getHistory)
         {
-            return _repo.GetCustomerHistory(getHistory);
+            return await _repo.GetCustomerHistory(getHistory);
         }
 
-        public int CheckLogin(Customer login)
+        public async Task<int> CheckLoginAsync(string UserName)
         {
-            return _repo.CheckLogin(login);
+            return await _repo.CheckLoginAsync(UserName);
         }
 
-        public Customer SelectCustomer(Customer customer)
-    {
-        return _repo.SelectCustomer(customer);
-    }
-
-        public List<StoreFront> SelectStore()
+        public async Task<Customer> SelectCustomerAsync(string UserName)
         {
-            return _repo.SelectStore();
+        return await _repo.SelectCustomerAsync(UserName);
         }
 
-        public Product SelectProduct (int ProductID)
+        public async Task<List<StoreFront>> SelectStoreAsync()
         {
-            return _repo.SelectProduct(ProductID);
+            return await _repo.SelectStoreAsync();
+        }
+
+        public async Task<Product> SelectProductAsync(int ProductID)
+        {
+            return await _repo.SelectProductAsync(ProductID);
         }
 
 
 
-        public List<Product> GetInventory(StoreFront getInv)
+        public async Task<List<Inventory>> GetInventory(int StoreID)
         {
-            return _repo.GetInventory(getInv);
+            return await _repo.GetInventory(StoreID);
         }
 
         public Product CreateNewProduct(Product newProduct)
         {
             return _repo.CreateNewProduct(newProduct);
         }
+
+        public async Task<List<Product>> AllProductsAsync()
+        {
+            return await _repo.AllProductsAsync();
+        }
+
     }

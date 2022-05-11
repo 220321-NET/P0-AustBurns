@@ -13,7 +13,7 @@ public class DBRepository : IRepository
         _connectionString = connectionString;
     }
     
-    public int CheckLogin(Customer login)
+    public async Task<int> CheckLoginAsync(string UserName)
     {
         bool found = false;
 
@@ -22,9 +22,9 @@ public class DBRepository : IRepository
 
         using SqlCommand cmd = new SqlCommand("SELECT * FROM Customers WHERE username = @username", connection);
 
-        cmd.Parameters.AddWithValue("@username", login.Username);
+        cmd.Parameters.AddWithValue("@username", UserName);
 
-        SqlDataReader read = cmd.ExecuteReader();
+        SqlDataReader read = await cmd.ExecuteReaderAsync();
         if(read.HasRows)
             found = true;
         read.Close();
@@ -35,7 +35,7 @@ public class DBRepository : IRepository
         return 0;
 
     }
-    public Order AddCustomerHistory(Order updateHistory)
+    public async Task<Order> AddCustomerHistoryAsync(Order updateHistory)
     {
         using SqlConnection connection = new SqlConnection(_connectionString);
         connection.Open();
@@ -57,10 +57,9 @@ public class DBRepository : IRepository
         }
 
         connection.Close();
-
         return updateHistory;
     } 
-    public Order GetCustomerHistory(Order getHistory)
+    public async Task<List<Order>> GetCustomerHistory(Order getHistory)
     {
         List<Order> history = new List<Order>();
         using SqlConnection connection = new SqlConnection(_connectionString);
@@ -69,7 +68,7 @@ public class DBRepository : IRepository
         using SqlCommand cmd = new SqlCommand("SELECT * FROM Orders WHERE CustomerID = @CustomerID", connection);
         cmd.Parameters.AddWithValue("@CustomerID", getHistory.Id);
 
-        SqlDataReader read = cmd.ExecuteReader();
+        SqlDataReader read = await cmd.ExecuteReaderAsync();
 
         // while(read.Read())
         // {
@@ -82,10 +81,10 @@ public class DBRepository : IRepository
 
         List<Order> SortedList = history.OrderBy(o=>o.Id).ToList();
 
-        return getHistory;
+        return SortedList;
 
     }
-    public Customer SelectCustomer(Customer customer)
+    public async Task<Customer> SelectCustomerAsync(string UserName)
     {
         Customer returnCustomer = new Customer();
 
@@ -93,11 +92,11 @@ public class DBRepository : IRepository
         connection.Open();
 
         using SqlCommand cmd = new SqlCommand("SELECT * FROM Customers WHERE username = @username", connection);
-        cmd.Parameters.AddWithValue("@username", customer.Username);
+        cmd.Parameters.AddWithValue("@username", UserName);
 
         SqlDataReader read = cmd.ExecuteReader();
 
-        if(read.Read())
+        if(await read.ReadAsync())
         {
             int codeID = read.GetInt32(0);
             string username = read.GetString(1);
@@ -118,84 +117,58 @@ public class DBRepository : IRepository
 
 
     }
-    public Customer CreateCustomer(Customer customerToCreate)
+    public async Task<Customer> CreateCustomerAsync(Customer customerToCreate)
     {
         using SqlConnection connection = new SqlConnection(_connectionString);
         connection.Open();
 
-        using SqlCommand cmd = new SqlCommand("INSERT INTO Customers(username) OUTPUT INSERTED.id VALUES (@username)", connection);
+        using SqlCommand cmd =  new SqlCommand("INSERT INTO Customers(username) OUTPUT INSERTED.id VALUES (@username)", connection);
 
         cmd.Parameters.AddWithValue("@username", customerToCreate.Username);
 
-
-        try{
-
-        cmd.ExecuteScalar();                        //This function takes in the user information and stores it inside of the table
-        }
-        catch(Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
+        await cmd.ExecuteScalarAsync();
         connection.Close();
-
         return customerToCreate;
     }
 
 
     //This selects the inventory from a the store that the user inputs
-    public List<Product> GetInventory(StoreFront getInv)
+    public async Task<List<Inventory>> GetInventory(int StoreID)
     {
-        List<Product> inventory = new List<Product>();
+        List<Inventory> inventory = new List<Inventory>();
         using SqlConnection connection = new SqlConnection(_connectionString);
         connection.Open();
 
         using SqlCommand cmd = new SqlCommand("SELECT * FROM Inventory WHERE StoreID = @StoreID", connection);
-        cmd.Parameters.AddWithValue("@StoreID", getInv.Id);
+        cmd.Parameters.AddWithValue("@StoreID", StoreID);
 
         SqlDataReader read = cmd.ExecuteReader();
 
-        while(read.Read())
+        while(await read.ReadAsync())
         {
-            Product codeProduct = SelectProduct(read.GetInt32(2));
-            inventory.Add(codeProduct);
+            Product codeProduct = await SelectProductAsync(read.GetInt32(2));
+            int quantity = read.GetInt32(1);
+            //inventory.Add(codeProduct);
+
+            Inventory codeInv = new Inventory
+            {
+                invProduct = codeProduct,
+                quantity = quantity
+            };
+
+            inventory.Add(codeInv);
         }
 
         read.Close();
         connection.Close();
 
-        List<Product> SortedList = inventory.OrderBy(o=>o.Id).ToList();
+        List<Inventory> SortedList = inventory.OrderBy(o=>o.invProduct.Id).ToList();
 
         return SortedList;
     }
 
-    public List<LineItems> GetAllLineItems()
-    {
-        List<LineItems> allInventoryItems = new List<LineItems>();
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        connection.Open();
-        using SqlCommand cmd = new SqlCommand("SELECT * FROM LineItems", connection);
-        using SqlDataReader reader = cmd.ExecuteReader();
-        while(reader.Read())
-        {
-            int LineItemID = reader.GetInt32(0);
-            int StoreId = reader.GetInt32(1);
-            int ProductId = reader.GetInt32(2);
-            int Quantity = reader.GetInt32(3);
-            LineItems inventoryItem = new LineItems{
-                Id = LineItemID,
-                storeId = StoreId,
-                productId = ProductId,
-                quantity = Quantity
-            };
-            allInventoryItems.Add(inventoryItem);
-        }
-        reader.Close();
-        connection.Close();
-        return allInventoryItems;
-    }
-
     //This Lists out all the stores in the Database and allows the user to select which store they would like to shop at
-    public List<StoreFront> SelectStore()
+    public async Task<List<StoreFront>> SelectStoreAsync()
     {
         List<StoreFront> allStores = new List<StoreFront>();
 
@@ -205,7 +178,7 @@ public class DBRepository : IRepository
         using SqlCommand cmd = new SqlCommand("SELECT * FROM Stores", connection);
         SqlDataReader read = cmd.ExecuteReader();
 
-        while(read.Read())
+        while(await read.ReadAsync())
         {
             int StoreID = read.GetInt32(0);  //This takes the data inside the chart and reads it to be put into
             string city = read.GetString(1); //the allStores "temporary' store front named codeStoreFront
@@ -225,19 +198,19 @@ public class DBRepository : IRepository
 
         return allStores;
     }
-    public Product SelectProduct(int ProductID)
+    public async Task<Product> SelectProductAsync(int id)
     {
         Product codeProduct = new Product();
 
         using SqlConnection connection = new SqlConnection(_connectionString);
         connection.Open();
 
-        using SqlCommand cmd = new SqlCommand("SELECT * FROM Products WHERE id = @id", connection);
-        cmd.Parameters.AddWithValue("@id", ProductID);
+        using SqlCommand cmd = new SqlCommand("SELECT * FROM Products WHERE id = @ProductID", connection);
+        cmd.Parameters.AddWithValue("@ProductID", id);
         
         SqlDataReader read = cmd.ExecuteReader();
 
-        if(read.Read())
+        if(await read.ReadAsync())
         {
             int codeID = read.GetInt32(0); //(x) selects the column and stores it in a temporary storage to use in the UI
             string Title = read.GetString(1);
@@ -266,29 +239,43 @@ public class DBRepository : IRepository
         cmd.Parameters.AddWithValue("@Content", newProduct.content);
         cmd.Parameters.AddWithValue("@Cost", newProduct.cost);
 
-        try
-        {
-        cmd.ExecuteScalar();                        //This function takes in the user information and stores it inside of the table
-        }
-        catch(Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
+        cmd.ExecuteScalar();
         connection.Close();
 
         return newProduct;
 
     }
+    public async Task<List<Product>> AllProductsAsync()
+        {
+            List<Product> allProducts = new List<Product>();
 
+            using SqlConnection connection = new SqlConnection(_connectionString);
+            connection.Open();
 
-    // public Product UpdateStock(Product updateStocks)
-    // {
-    //     using SqlConnection connection = new SqlConnection(_connectionString);
-    //     connection.Open();
+            using SqlCommand cmd = new SqlCommand("SELECT * FROM Products", connection);
+            SqlDataReader read = await cmd.ExecuteReaderAsync();
 
-    //     using SqlCommand cmd = new SqlCommand("UPDATE TABLE Inventory(Quantity, ) OUTPUT INSERTED.id VALUES (@username)", connection);
+            while(read.Read())
+            {
+                int id = read.GetInt32(0);  //This takes the data inside the chart and reads it to be put into
+                string Title = read.GetString(1); //the allStores "temporary' store front named codeStoreFront
+                string Content = read.GetString(2);//
+                double Cost = read.GetDouble(3);
 
-    //     cmd.Parameters.AddWithValue("@username", updateStocks.Username);
-    // }
+                Product codeAdminAllInv = new Product
+                {
+                    Id = id,                  //These take the read information from inside the chart and inserts it into the 
+                    title = Title,              //StoreFront file by using ToString()
+                    content = Content,
+                    cost = Cost
+                };
+                allProducts.Add(codeAdminAllInv);
+            }
+
+            read.Close();
+            connection.Close();
+
+            return allProducts;
+        }
 
 }

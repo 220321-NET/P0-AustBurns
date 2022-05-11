@@ -7,18 +7,18 @@ public interface IRepository    // This space you define all of the Functions th
 {
 
     //Customer stuff
-    Customer CreateCustomer(Customer customerToCreate);
-    Order AddCustomerHistory(Order updateHistory);
-    Order GetCustomerHistory(Order getHistory);
-    Customer SelectCustomer(Customer customer);
-    int CheckLogin(Customer login);
+    Task<Customer> CreateCustomerAsync(Customer customerToCreate);
+    Task<Order> AddCustomerHistoryAsync(Order updateHistory);
+    Task<List<Order>> GetCustomerHistory(Order getHistory);
+    Task<Customer> SelectCustomerAsync(string UserName);
+    Task<int> CheckLoginAsync(string UserName);
 
     //Store stuff
-    List<Product> GetInventory(StoreFront getInv);
-    List<StoreFront> SelectStore();
-    Product SelectProduct(int ProductID );
+    Task<List<Inventory>> GetInventory(int StoreID);
+    Task<List<StoreFront>> SelectStoreAsync();
+    Task<Product> SelectProductAsync(int ProductID );
 
     //Inventory/product stuff
     Product CreateNewProduct(Product newProduct);
-
+    Task<List<Product>> AllProductsAsync();
 }

@@ -4,18 +4,20 @@ namespace BL;
 public interface ISLBL
 {
     //This is for the customer
-    Customer CreateCustomer(Customer customerToCreate);
-    Order AddCustomerHistory(Order updateHistory);
-    Order GetCustomerHistory(Order getHistory);
-    Customer SelectCustomer(Customer customer);
-    int CheckLogin(Customer login);
+    Task<Customer> CreateCustomerAsync(Customer customerToCreate);
+    Task<Order> AddCustomerHistoryAsync(Order updateHistory);
+
+    // Order GetCustomerHistory(Order getHistory);
+    Task<Customer> SelectCustomerAsync(string UserName);
+    Task<int> CheckLoginAsync(string UserName);
 
     //This is for store related items
-    List<StoreFront> SelectStore();
+    Task<List<StoreFront>> SelectStoreAsync();
     
 
     //This is for Inventory/Product related items
-    List<Product> GetInventory(StoreFront getInv);
+    Task<List<Inventory>> GetInventory(int StoreID);
     Product CreateNewProduct(Product newProduct);
-    Product SelectProduct(int ProductID);
+    Task<Product> SelectProductAsync(int ProductID);
+    Task<List<Product>> AllProductsAsync();
 }

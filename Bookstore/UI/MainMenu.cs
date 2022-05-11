@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using BL;
 using DL;
+using Models;
 
 
 namespace UI;
@@ -8,14 +9,14 @@ namespace UI;
 
 public class MainMenu 
 {
-    private readonly ISLBL _bl;
+    private readonly HttpService _httpService;
 
-    public MainMenu(ISLBL bl)
+    public MainMenu(HttpService httpService)
     {
-        _bl = bl;
+        _httpService = httpService;
     }
 
-    public void Start()
+    public async Task Start()
     {
             Console.WriteLine(" ____________________/|");
             Console.WriteLine(" |                  | |");
@@ -38,14 +39,14 @@ public class MainMenu
             switch(info)
             {
                 case "1":
-                    newCustomer();  
+                    await newCustomer();  
                     break;
 
                 case "2":
-                    Login();
+                    await Login();
                     break;
 
-                case "secret password": AdminAccount(); break;
+                case "secret password": await AdminAccount(); break;
 
                 case "x":
                     Console.WriteLine("Goodbye!");
@@ -66,7 +67,7 @@ public class MainMenu
 
 
     //Customer Information New, Login, Menu after successful login
-    public void newCustomer()
+    public async Task newCustomer() //done
     {
         FillerLine();
 
@@ -92,11 +93,11 @@ public class MainMenu
             //goto EnterUserData;
         }
 
-        Customer createdCustomer = _bl.CreateCustomer(customerToCreate);
+        Customer createdCustomer = await _httpService.CreateCustomerAsync(customerToCreate);
         if (createdCustomer != null)
             Console.WriteLine("\nYour account has been created");
     }
-    public void Login()
+    public async Task Login()  //done
     {
         EnterLogin:
         Console.Write("Enter Your username :");
@@ -114,7 +115,7 @@ public class MainMenu
             goto EnterLogin;
         }
 
-        int results = _bl.CheckLogin(login);
+        int results = await _httpService.CheckLoginAsync(login.Username);
         switch(results)
         {
             case 0:
@@ -131,18 +132,19 @@ public class MainMenu
                 }
                 
             case 1:
-                LoginMenu(_bl.SelectCustomer(login));
+                Customer currentCustomer = await _httpService.SelectCustomerAsync(login.Username);
+                await LoginMenu(currentCustomer);
                 break;
         }
     }
-    public void LoginMenu(Customer currentCustomer)
+    public async Task LoginMenu(Customer currentCustomer) //done
     {
         FillerLine();
             bool exit2 = false;
             Console.Write($"Thank You for Logging in {currentCustomer.Username}" );
             do
             {
-                LoginMenu:
+                // LoginMenu:
                 Console.WriteLine("\nWhat Would you Like to do Now? \n");
                 Console.WriteLine("[1] Shop all Books");
                 Console.WriteLine("[2] Make a Request for a Book we Don't Have");
@@ -151,22 +153,22 @@ public class MainMenu
                 string? input = Console.ReadLine();
                 switch(input)
                 {
-                    case "1": BrowseStoreBooks(currentCustomer); break;
+                    case "1": await BrowseStoreBooks(currentCustomer); break;
                     case "2":
                         Console.WriteLine("What is the Book that you would like to see us have?");
                         string? request = Console.ReadLine();
                         Console.WriteLine($"We will try our best to add {request} to our collection! \n");
                         break;
-                    case "3": CustomerHistory();  break;
+                    case "3": Console.WriteLine("await CustomerHistory();  break;"); break;
                     case "x": exit2 = true; break;
                     default:  Console.WriteLine("Invalid Input"); break;
                 }
             }while(!exit2);
     }
-    public void CustomerHistory()
+    public async Task CustomerHistory(Customer currentCustomer)
     {
         Console.WriteLine("These are all of Your Purchases.");
-        // List<Order> getHistory = _bl.GetCustomerHistory();
+        // List<Order> getHistory = _httpService.GetCustomerHistory();
 
         // if (getHistory.Count == 0)
         //     Console.WriteLine("You Haven't Made any Purchases!");
@@ -176,7 +178,7 @@ public class MainMenu
     }
 
     //Admin privileges View current stock, add stock, add store, add product
-    public void AdminAccount()
+    public async Task AdminAccount()
     {
         bool exit3 = false;
         do
@@ -185,12 +187,16 @@ public class MainMenu
             FillerLine();
 
             Console.WriteLine("Welcome Admin\nWhat would you like to do?\n");
+            Console.WriteLine("[0] View all Products");
             Console.WriteLine("[1] Update Product Stock ");
             Console.WriteLine("[2] View Current Stock");
             Console.WriteLine("[x] go back");
             string? input = Console.ReadLine();
             switch (input)
             {
+                case "0":
+                    GetAllProducts();
+                    break;
                 case "1":
                     Console.WriteLine("UpdateStock()");
                     break;
@@ -206,19 +212,19 @@ public class MainMenu
             }
         } while (!exit3);
     }
-    public void AdminMenu()
+    public async Task AdminMenu()
     {
         Console.WriteLine("Which Store would you like to manage?\n");  
-        StoreFront shopIn = SelectStore();
+        StoreFront shopIn = await SelectStoreAsync();
 
         //continueToShop:
         Console.Write($"You have selected {shopIn}.");
-        Product shopProduct = SelectInventory(shopIn);
+        Inventory shopProduct = await GetInventory(shopIn);
     }
     public StoreFront? AdminStores()
     {
         Console.WriteLine("These are the store's in the Franchise.");
-        List<StoreFront> allStores = _bl.SelectStore();
+        List<StoreFront> allStores = _httpService.SelectStoreAsync();
 
         if (allStores.Count == 0)
             return null;
@@ -239,7 +245,7 @@ public class MainMenu
     public Product AdminInventory(StoreFront getInv)
     {
         Console.WriteLine($"This is the inventory for the store you selected :");
-            List<Product> codeProduct = _bl.GetInventory(getInv);
+            List<Product> codeProduct = _httpService.GetInventory(getInv);
 
             if (codeProduct.Count == 0)
             return null;
@@ -262,10 +268,31 @@ public class MainMenu
     {
 
     }
+    public Product GetAllProducts()
+    {
+        Console.WriteLine($"This is the inventory from each store :");
+            List<Product> codeProduct = _httpService.AllProducts();
 
+            if (codeProduct.Count == 0)
+            return null;
+
+            BadInput:
+            for (int i = 0; i < codeProduct.Count; i++)
+                Console.WriteLine($"[{i}]: \nTitle: {codeProduct[i].title} \nContent: {codeProduct[i].content}\nSelling for: ${codeProduct[i].cost}\n");//This list off the title of the books inside the list
+
+            int productSelect;
+
+            if(Int32.TryParse(Console.ReadLine(), out productSelect) && ((productSelect) >= 0 && (productSelect) < codeProduct.Count)) 
+                return codeProduct[productSelect];  //This is a limit to where the input must fall on a number in between 0 and the amount of inventory
+            else
+            {
+                Console.WriteLine("That item is not in this inventory, Try again");
+                goto BadInput;
+            }
+    }
 
     //The user interface, gets their input on which store they want to shop in and the inventory from that store
-    public void BrowseStoreBooks(Customer currentCustomer)//define so that it stores which user is using the interface
+    public async Task BrowseStoreBooks(Customer currentCustomer)//define so that it stores which user is using the interface
     {
         
         Order currentOrder = new Order();
@@ -274,11 +301,11 @@ public class MainMenu
         FillerLine();
 
         Console.WriteLine("Which Store would you like to browse?\n");  
-        StoreFront shopIn = SelectStore();
+        StoreFront shopIn = await SelectStoreAsync();
 
         continueToShop:
         Console.WriteLine("Pick through the library and find the books you would like.");
-        Product shopProduct = SelectInventory(shopIn);
+        Inventory shopProduct = SelectInventory(shopIn);
 
         Invalid:
         Console.WriteLine($"Would you like to buy {shopProduct.title} for {shopProduct.cost}? "); 
@@ -318,12 +345,12 @@ public class MainMenu
             }
         }
     }
-    public StoreFront? SelectStore()
+    public async Task<StoreFront?> SelectStoreAsync()  //done
     {   
         // pull the inventory from the data table once its connected by using SELECT * FROM Inventory
         //put into the DB
         Console.WriteLine("These are the store's we have currently.");
-        List<StoreFront> allStores = _bl.SelectStore();
+        List<StoreFront> allStores = await _httpService.SelectStoreAsync();
 
         if (allStores.Count == 0)
             return null;
@@ -346,7 +373,7 @@ public class MainMenu
     {
         FillerLine();
             Console.WriteLine($"This is the inventory :\n");
-            List<Product> codeProduct = _bl.GetInventory(getInv);
+            List<Product> codeProduct = await _httpService.GetInventory(StoreID);
 
             if (codeProduct.Count == 0)
             return null;
@@ -382,7 +409,7 @@ public class MainMenu
 {
     Console.WriteLine("Order has Been Placed!");
     currentOrder.DatePurchased = DateTime.Now;
-    if(_bl.AddCustomerHistory(currentOrder) == null)
+    if(_httpService.AddCustomerHistoryAsync(currentOrder) == null)
         Console.WriteLine("Your Order has Been Placed");
 
 }
